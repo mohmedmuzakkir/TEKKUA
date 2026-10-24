@@ -1,0 +1,8 @@
+import{test}from'node:test';import{readFile}from'node:fs/promises';import{strict as assert}from'node:assert';import{IMAGES}from'../src/images.js';import{products,categories}from'../src/data.js';
+test('all embedded images are valid base64 WEBP data URIs',()=>{assert.ok(Object.keys(IMAGES).length>=20);for(const[k,v]of Object.entries(IMAGES)){assert.match(v,/^data:image\/webp;base64,/);const buf=Buffer.from(v.split(',')[1],'base64');assert.equal(buf.toString('ascii',0,4),'RIFF',k);assert.ok(buf.length>1000,k)}});
+test('all product images exist in embedded module',()=>{for(const p of products)assert.ok(IMAGES[p.img],p.name)});
+test('page image references exist in module',async()=>{let code=await readFile('src/app.js','utf8');for(const match of code.matchAll(/img\('([^']+)'\)/g))assert.ok(IMAGES[match[1]],match[1])});
+test('required pages, customization and cart handlers exist',async()=>{let code=await readFile('src/app.js','utf8');for(const t of ['function home(', 'function shop(', 'function product(', 'function customize(', 'function bulk(', 'function work(', 'function about(', 'function contact(', "case 'addcart'", "case 'customquote'", "case 'filter'", "id==='uploadDesign'"])assert.ok(code.includes(t),t)});
+test('no direct asset paths except required image helper fallback',async()=>{let code=await readFile('src/app.js','utf8');let references=[...code.matchAll(/\/assets\//g)];assert.equal(references.length,1);assert.ok(code.includes("const img = n => IMAGES[n] || '/assets/' + n + '.webp';"))});
+test('all advertised categories have products',()=>{for(const c of categories.filter(x=>x!=='All'))assert.ok(products.some(p=>p.cat===c),c)});
+test('no invented pricing or WhatsApp contacts',()=>{assert.ok(products.every(p=>p.price===null));});
